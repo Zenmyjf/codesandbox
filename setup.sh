@@ -2,30 +2,36 @@
 # -----------------------------------------------------------------------------
 # Automated VNC Remote Desktop Setup for Codesandbox/Linux Environments
 #
-# This script installs VNC Server, XFCE4 Desktop, Firefox browser, and ngrok.
-# It handles the interactive VNC password setup and starts the ngrok tunnel.
+# This script installs:
+# 1. TightVNC Server
+# 2. Full XFCE4 Desktop (xfce4 and xfce4-goodies)
+# 3. Firefox Web Browser
+# 4. Ngrok Client
+#
+# It prompts for the VNC password, then automates installation, configuration,
+# and starts the VNC server and ngrok tunnel with speed optimizations.
 # -----------------------------------------------------------------------------
 
-# --- Configuration ---
+# --- Configuration for Speed and Performance ---
 VNC_DISPLAY=":1"
 VNC_PORT="5901"
-# Optimization for better performance over the internet: lower color depth
+# Optimization: 16-bit color and fixed geometry for faster response (less network data)
 VNC_GEOMETRY="1280x800"
 VNC_DEPTH="16"
 
 # NOTE: Using the ngrok auth token you provided in the original file
 NGROK_AUTH_TOKEN="2lrcV3R6170b8KA6NGdhfygsUhd_3C9Kgt4YELwaPNmCEeUKb"
 
-echo "--- VNC/XFCE/Ngrok Automation Script Starting ---"
+echo "--- Full XFCE Desktop Setup Starting ---"
 
 # 1. Interactive VNC Password Check/Setup
 if [ ! -f ~/.vnc/passwd ]; then
     echo ""
     echo "=========================================================================="
-    echo "  🛑 VNC PASSWORD SETUP"
-    echo "  The VNC server requires you to set an access password interactively."
+    echo "  🛑 VNC PASSWORD SETUP - INTERACTIVE STEP"
+    echo "  The VNC server requires you to set an access password now."
     echo "  Please enter and confirm your password when prompted below."
-    echo "  (You will be asked to create a 'View-only password'; you can skip this.)"
+    echo "  (You can safely skip the 'View-only password' if you wish.)"
     echo "=========================================================================="
     echo ""
     # Run vncserver interactively to set the password
@@ -34,15 +40,14 @@ if [ ! -f ~/.vnc/passwd ]; then
     vncserver -kill $VNC_DISPLAY 2>/dev/null || true
     echo ""
     echo "=========================================================================="
-    echo "  VNC Password has been set. Continuing with installation..."
+    echo "  ✅ VNC Password has been set. Continuing with installation..."
     echo "=========================================================================="
     echo ""
 fi
 
 
-# 2. Update and Install All Packages in one go (Optimized)
-echo "--- 2. Installing Desktop Environment (XFCE4, Firefox) and TightVNC Server ---"
-# Single apt command for reduced overhead
+# 2. Update and Install ALL Required Packages (Optimized single command)
+echo "--- 2. Installing XFCE4, XFCE4-GOODIES, Firefox, and TightVNC Server ---"
 sudo apt update
 sudo apt install tightvncserver xfce4 xfce4-goodies dbus dbus-x11 firefox -y
 
@@ -54,7 +59,7 @@ cat << EOF > ~/.vnc/xstartup
 # Start XFCE4 Desktop and necessary components
 xrdb \$HOME/.Xresources
 export XKL_XMODMAP_DISABLE=1
-# Using dbus-launch to ensure the XFCE session starts correctly with dependencies
+# Launch XFCE4 with dbus support for a complete desktop experience
 dbus-launch --exit-with-session startxfce4 &
 EOF
 
@@ -82,17 +87,15 @@ echo "--- 5. Stopping any previous VNC session on $VNC_DISPLAY ---"
 vncserver -kill $VNC_DISPLAY 2>/dev/null || true
 
 echo "--- 6. Starting new VNC server on $VNC_DISPLAY (Port $VNC_PORT) ---"
-echo "  Settings: Geometry=$VNC_GEOMETRY, Depth=$VNC_DEPTH (Faster response)"
+echo "  🚀 Settings: Geometry=$VNC_GEOMETRY, Depth=$VNC_DEPTH (Optimization for Speed)"
 # Start VNC with performance optimizations
 vncserver $VNC_DISPLAY -geometry $VNC_GEOMETRY -depth $VNC_DEPTH
 
 # 6. Start ngrok Tunnel
 echo "--- 7. Starting ngrok Tunnel (Foreground Process) ---"
-echo "  The Ngrok output below contains the address you will use for your VNC client."
-echo "  LOOK FOR THE 'Forwarding' line (e.g., tcp://X.tcp.ngrok.io:XXXXX)"
+echo "  🔥 SUCCESS! LOOK FOR THE 'Forwarding' LINE below to find your VNC access address."
 
 # The ngrok process will run in the foreground and display the URL
 ngrok tcp $VNC_PORT
 
-# Cleanup (This line will likely never be reached as ngrok runs indefinitely)
 echo "--- Script finished ---"
