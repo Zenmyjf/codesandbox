@@ -25,7 +25,7 @@ DEBIAN_FRONTEND=noninteractive sudo apt install \
   xfce4-goodies \
   dbus \
   dbus-x11 \
-  firefox \
+  firefox-esr \
   -y
 
 echo "✅ All core desktop packages installed."
