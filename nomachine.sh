@@ -2,23 +2,40 @@
 # -----------------------------------------------------------------------------
 # NOMACHINE SETUP SCRIPT - Optimized for Performance
 #
-# Nomachine uses its own protocol (NX) and server (nxserver) on port 4000.
-# VNC components are removed for a cleaner setup.
+# This version adds an interactive prompt to set the current Linux user's
+# password, which is required for Nomachine authentication.
 # -----------------------------------------------------------------------------
 
 # --- Configuration ---
-# Nomachine's default port
 NOMACHINE_PORT="4000"
 NOMACHINE_DEB_URL="https://web9001.nomachine.com/download/9.2/Linux/nomachine_9.2.18_3_amd64.deb"
 
 # NOTE: Using the ngrok auth token you provided
 NGROK_AUTH_TOKEN="2lrcV3R6170b8KA6NGdhfygsUhd_3C9Kgt4YELwaPNmCEeUKb"
 
-echo "--- Nomachine XFCE Desktop Setup Starting ---"
+# --- Get Current User ---
+CURRENT_USER=$(whoami)
 
-# 1. Update and Install XFCE4 and Browser
+echo "--- Nomachine XFCE Desktop Setup Starting for User: $CURRENT_USER ---"
+
+# 1. Interactive User Password Setup
 # -----------------------------------------------------------------------------
-echo -e "\n--- 1. Installing XFCE4, Desktop Dependencies, and Firefox Browser ---"
+echo -e "\n=========================================================================="
+echo "  🛑 USER PASSWORD SETUP - INTERACTIVE STEP"
+echo "  Nomachine requires a Linux user password for access."
+echo "  You must set the password for the current user ($CURRENT_USER) now."
+echo "  This password is what you will use to log into Nomachine."
+echo "=========================================================================="
+
+# The passwd command will prompt the user to set a new password interactively
+sudo passwd $CURRENT_USER
+
+echo -e "\n✅ User password set for $CURRENT_USER. Continuing with installation..."
+
+
+# 2. Update and Install XFCE4 and Browser
+# -----------------------------------------------------------------------------
+echo -e "\n--- 2. Installing XFCE4, Desktop Dependencies, and Firefox Browser ---"
 DEBIAN_FRONTEND=noninteractive sudo apt update
 
 # Install XFCE4, XFCE4 Goodies, DBUS, and Firefox
@@ -33,9 +50,9 @@ DEBIAN_FRONTEND=noninteractive sudo apt install \
 echo "✅ All core packages installed."
 
 
-# 2. Download and Install Nomachine
+# 3. Download and Install Nomachine
 # -----------------------------------------------------------------------------
-echo -e "\n--- 2. Downloading and Installing Nomachine Server ---"
+echo -e "\n--- 3. Downloading and Installing Nomachine Server ---"
 
 # Download the Nomachine .deb package
 curl -LO $NOMACHINE_DEB_URL
@@ -45,13 +62,12 @@ DEBIAN_FRONTEND=noninteractive sudo dpkg -i "$(basename $NOMACHINE_DEB_URL)"
 # This command forces apt to install any missing dependencies needed by Nomachine
 DEBIAN_FRONTEND=noninteractive sudo apt install -f -y
 
-# Nomachine is started automatically upon installation and configuration is user-specific.
 echo "✅ Nomachine server installed and started automatically."
 
 
-# 3. Install and Configure Ngrok
+# 4. Install and Configure Ngrok
 # -----------------------------------------------------------------------------
-echo -e "\n--- 3. Installing and Configuring ngrok ---"
+echo -e "\n--- 4. Installing and Configuring ngrok ---"
 
 # Ngrok Installation
 curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
@@ -66,13 +82,13 @@ ngrok config add-authtoken $NGROK_AUTH_TOKEN
 echo "✅ Ngrok installed and configured."
 
 
-# 4. Start Ngrok Tunnel (Final Step)
+# 5. Start Ngrok Tunnel (Final Step)
 # -----------------------------------------------------------------------------
-echo -e "\n--- 4. Starting ngrok Tunnel for Nomachine (Port $NOMACHINE_PORT) ---"
+echo -e "\n--- 5. Starting ngrok Tunnel for Nomachine (Port $NOMACHINE_PORT) ---"
 
 echo "🔥 SUCCESS! Nomachine is now running. Look for the 'Forwarding' line below to find your access address."
-echo "Use a Nomachine Client (downloadable from their site) to connect to the 'tcp://...' address."
-echo "Login credentials are your Codesandbox username (likely 'codesandbox') and your password (which you haven't set yet)."
+echo "Use a Nomachine Client to connect to the 'tcp://...' address."
+echo "Login with Username: $CURRENT_USER and the password you just set."
 echo "Press Ctrl+C to stop the tunnel (which will stop the script)."
 
 # Ngrok will start and remain in the foreground
