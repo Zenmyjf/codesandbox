@@ -1,7 +1,6 @@
-
 #!/bin/bash
 # -----------------------------------------------------------------------------
-# NOMACHINE SETUP SCRIPT - Fixed for Installation and Authentication Errors
+# NOMACHINE DISPLAY FIX SCRIPT - Attempts to resolve "Cannot create a new display"
 # Protocol: NX (Nomachine) on port 4000
 # -----------------------------------------------------------------------------
 
@@ -9,26 +8,27 @@
 NOMACHINE_PORT="4000"
 NOMACHINE_DEB_URL="https://web9001.nomachine.com/download/9.2/Linux/nomachine_9.2.18_3_amd64.deb"
 NGROK_AUTH_TOKEN="2lrcV3R6170b8KA6NGdhfygsUhd_3C9Kgt4YELwaPNmCEeUKb"
-
 CURRENT_USER=$(whoami)
 
 echo "--- Nomachine XFCE Desktop Setup Starting for User: $CURRENT_USER ---"
 
-# 1. Update and Install XFCE4 and Browser (Highest Priority)
+# 1. Update and Install ALL Dependencies (Including X-Server components)
 # -----------------------------------------------------------------------------
-echo -e "\n--- 1. Installing XFCE4, Desktop Dependencies, and Firefox Browser ---"
+echo -e "\n--- 1. Installing XFCE4, X-Server, and Firefox Browser ---"
 DEBIAN_FRONTEND=noninteractive sudo apt update
 
-# Install all necessary components in one command for dependency resolution
+# Install all desktop components plus the core X-Server components
 DEBIAN_FRONTEND=noninteractive sudo apt install \
   xfce4 \
   xfce4-goodies \
   dbus \
   dbus-x11 \
   firefox-esr \
+  xinit \
+  xserver-xorg \
   -y
 
-echo "✅ All core desktop packages installed."
+echo "✅ All core desktop and X-Server packages installed."
 
 # 2. Interactive User Password Setup (Mandatory for Nomachine Login)
 # -----------------------------------------------------------------------------
@@ -46,22 +46,26 @@ echo -e "\n✅ User password set. Continuing with installation..."
 # 3. Download and Install Nomachine
 # -----------------------------------------------------------------------------
 echo -e "\n--- 3. Downloading and Installing Nomachine Server ---"
-
-# Download the Nomachine .deb package
 curl -LO $NOMACHINE_DEB_URL
-
-# Install the Nomachine package
 DEBIAN_FRONTEND=noninteractive sudo dpkg -i "$(basename $NOMACHINE_DEB_URL)"
-
-# Clean up broken dependencies which can happen after dpkg install
 DEBIAN_FRONTEND=noninteractive sudo apt install -f -y
 
-echo "✅ Nomachine server installed and started automatically."
+echo "✅ Nomachine server installed."
 
 
-# 4. Install and Configure Ngrok
+# 4. Critical Nomachine Configuration Fix
 # -----------------------------------------------------------------------------
-echo -e "\n--- 4. Installing and Configuring ngrok ---"
+echo -e "\n--- 4. Forcing Nomachine to recognize XFCE ---"
+
+# This command ensures Nomachine is aware of XFCE as an available session
+sudo /usr/NX/bin/nxserver --startmode xfce
+
+echo "✅ Nomachine configured for XFCE session."
+
+
+# 5. Install and Configure Ngrok
+# -----------------------------------------------------------------------------
+echo -e "\n--- 5. Installing and Configuring ngrok ---"
 
 # Ngrok Installation sequence
 curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
@@ -76,15 +80,13 @@ ngrok config add-authtoken $NGROK_AUTH_TOKEN
 echo "✅ Ngrok installed and configured."
 
 
-# 5. Start Ngrok Tunnel (Final Step)
+# 6. Start Ngrok Tunnel (Final Step)
 # -----------------------------------------------------------------------------
-echo -e "\n--- 5. Starting ngrok Tunnel for Nomachine (Port $NOMACHINE_PORT) ---"
+echo -e "\n--- 6. Starting ngrok Tunnel for Nomachine (Port $NOMACHINE_PORT) ---"
 
 echo "--------------------------------------------------------------------------"
-echo "🔥 SUCCESS! Nomachine is ready."
-echo "Use the Nomachine Client and the 'tcp://...' address below."
-echo "Login with Username: $CURRENT_USER and the password you set in Step 2."
-echo "Press Ctrl+C to stop the tunnel (which will stop the script)."
+echo "🔥 FINAL ATTEMPT: Nomachine is ready with the display fix applied."
+echo "Use the Nomachine Client. Login: $CURRENT_USER and the password you set."
 echo "--------------------------------------------------------------------------"
 
 # Ngrok will start and remain in the foreground
