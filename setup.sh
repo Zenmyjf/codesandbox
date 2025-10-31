@@ -1,58 +1,81 @@
 #!/bin/bash
 # -----------------------------------------------------------------------------
-# Automated VNC Remote Desktop Setup for Codesandbox/Linux Environments
+# SEQUENCED VNC REMOTE DESKTOP SETUP
 #
-# This script installs:
-# 1. TightVNC Server
-# 2. Full XFCE4 Desktop (xfce4 and xfce4-goodies)
-# 3. Firefox Web Browser
-# 4. Ngrok Client
-#
-# It prompts for the VNC password, then automates installation, configuration,
-# and starts the VNC server and ngrok tunnel with speed optimizations.
+# Execution Order:
+# 1. Install All Packages (XFCE4, VNC, Firefox, Ngrok)
+# 2. Configure VNC (Interactive Password & xstartup)
+# 3. Start VNC Server
+# 4. Start Ngrok Tunnel (Final foreground step)
 # -----------------------------------------------------------------------------
 
 # --- Configuration for Speed and Performance ---
 VNC_DISPLAY=":1"
 VNC_PORT="5901"
-# Optimization: 16-bit color and fixed geometry for faster response (less network data)
+# Optimization: 16-bit color and fixed geometry for faster response
 VNC_GEOMETRY="1280x800"
 VNC_DEPTH="16"
 
-# NOTE: Using the ngrok auth token you provided in the original file
+# NOTE: Using the ngrok auth token you provided in your original file
 NGROK_AUTH_TOKEN="2lrcV3R6170b8KA6NGdhfygsUhd_3C9Kgt4YELwaPNmCEeUKb"
 
-echo "--- Full XFCE Desktop Setup Starting ---"
+echo "--- Sequenced XFCE Desktop Setup Starting ---"
 
-# 1. Interactive VNC Password Check/Setup
+# 1. Install ALL Required Packages (VNC, XFCE4, Firefox, Ngrok)
+# ---------------------------------------------------------------
+echo -e "\n--- 1. Installing All Desktop and Service Packages (This may take a few minutes) ---"
+
+# Install ngrok first to configure its repository
+curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc | \
+  sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null && \
+  echo "deb https://ngrok-agent.s3.amazonaws.com bookworm main" | \
+  sudo tee /etc/apt/sources.list.d/ngrok.list
+
+# Update and install everything in one robust command
+DEBIAN_FRONTEND=noninteractive sudo apt update
+DEBIAN_FRONTEND=noninteractive sudo apt install \
+  tightvncserver \
+  xfce4 \
+  xfce4-goodies \
+  dbus \
+  dbus-x11 \
+  firefox \
+  ngrok \
+  -y
+
+# Check for successful installation
+if ! command -v startxfce4 &> /dev/null
+then
+    echo -e "\n🔴 ERROR: XFCE4 installation failed. Please review terminal output."
+    exit 1
+fi
+echo "✅ All packages installed successfully."
+
+# 2. Ngrok Configuration (Setup)
+# ---------------------------------------------------------------
+echo -e "\n--- 2. Configuring ngrok Authentication ---"
+ngrok config add-authtoken $NGROK_AUTH_TOKEN
+echo "✅ Ngrok configured with auth token."
+
+# 3. VNC Server Configuration (Setup)
+# ---------------------------------------------------------------
+echo -e "\n--- 3. Configuring VNC Server (xstartup and Password) ---"
+
+# 3a. Interactive VNC Password Setup
 if [ ! -f ~/.vnc/passwd ]; then
-    echo ""
-    echo "=========================================================================="
+    echo -e "\n=========================================================================="
     echo "  🛑 VNC PASSWORD SETUP - INTERACTIVE STEP"
-    echo "  The VNC server requires you to set an access password now."
     echo "  Please enter and confirm your password when prompted below."
-    echo "  (You can safely skip the 'View-only password' if you wish.)"
+    echo "  (You can safely skip the 'View-only password'.)"
     echo "=========================================================================="
-    echo ""
     # Run vncserver interactively to set the password
     vncserver
     # Kill the temporary session created by the password command
     vncserver -kill $VNC_DISPLAY 2>/dev/null || true
-    echo ""
-    echo "=========================================================================="
-    echo "  ✅ VNC Password has been set. Continuing with installation..."
-    echo "=========================================================================="
-    echo ""
+    echo -e "\n✅ VNC Password has been set. Preparing to launch services..."
 fi
 
-
-# 2. Update and Install ALL Required Packages (Optimized single command)
-echo "--- 2. Installing XFCE4, XFCE4-GOODIES, Firefox, and TightVNC Server ---"
-sudo apt update
-sudo apt install tightvncserver xfce4 xfce4-goodies dbus dbus-x11 firefox -y
-
-# 3. Configure VNC xstartup file for XFCE
-echo "--- 3. Configuring VNC xstartup file ---"
+# 3b. Configure VNC xstartup file for XFCE
 mkdir -p ~/.vnc
 cat << EOF > ~/.vnc/xstartup
 #!/bin/sh
@@ -62,40 +85,22 @@ export XKL_XMODMAP_DISABLE=1
 # Launch XFCE4 with dbus support for a complete desktop experience
 dbus-launch --exit-with-session startxfce4 &
 EOF
-
-# Ensure the startup script is executable
 chmod +x ~/.vnc/xstartup
+echo "✅ xstartup file configured."
 
-# 4. Ngrok Setup and Configuration
-echo "--- 4. Installing and Configuring ngrok ---"
+# 4. Start VNC Server
+# ---------------------------------------------------------------
+echo -e "\n--- 4. Starting VNC Server on $VNC_DISPLAY (Port $VNC_PORT) ---"
+vncserver -kill $VNC_DISPLAY 2>/dev/null || true # Ensure it's killed first
 
-# Installation steps combined
-curl -sSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc | \
-  sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null && \
-  echo "deb https://ngrok-agent.s3.amazonaws.com bookworm main" | \
-  sudo tee /etc/apt/sources.list.d/ngrok.list && \
-  sudo apt update && \
-  sudo apt install ngrok -y
-
-# Configure the auth token
-echo "Configuring ngrok with provided auth token..."
-ngrok config add-authtoken $NGROK_AUTH_TOKEN
-
-# 5. Manage and Start VNC Server (Optimized)
-echo "--- 5. Stopping any previous VNC session on $VNC_DISPLAY ---"
-# Kill existing VNC session if it's running
-vncserver -kill $VNC_DISPLAY 2>/dev/null || true
-
-echo "--- 6. Starting new VNC server on $VNC_DISPLAY (Port $VNC_PORT) ---"
-echo "  🚀 Settings: Geometry=$VNC_GEOMETRY, Depth=$VNC_DEPTH (Optimization for Speed)"
-# Start VNC with performance optimizations
+echo "🚀 Settings: Geometry=$VNC_GEOMETRY, Depth=$VNC_DEPTH (Optimization for Speed)"
 vncserver $VNC_DISPLAY -geometry $VNC_GEOMETRY -depth $VNC_DEPTH
+echo "✅ VNC Server started."
 
-# 6. Start ngrok Tunnel
-echo "--- 7. Starting ngrok Tunnel (Foreground Process) ---"
-echo "  🔥 SUCCESS! LOOK FOR THE 'Forwarding' LINE below to find your VNC access address."
+# 5. Start ngrok Tunnel (Final Step)
+# ---------------------------------------------------------------
+echo -e "\n--- 5. Starting ngrok Tunnel (Foreground Process) ---"
+echo "🔥 SUCCESS! Look for the 'Forwarding' line below to find your VNC access address (e.g., tcp://X.tcp.ngrok.io:XXXXX)."
+echo "Press Ctrl+C to stop the tunnel (which will stop the script)."
 
-# The ngrok process will run in the foreground and display the URL
 ngrok tcp $VNC_PORT
-
-echo "--- Script finished ---"
